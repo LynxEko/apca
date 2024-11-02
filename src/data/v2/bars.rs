@@ -20,15 +20,15 @@ use crate::Str;
 #[non_exhaustive]
 pub enum TimeFrame {
   /// A time frame of minutes (valid values are 1-59 minutes)
-  Minute(usize),
+  Minute(u32),
   /// A time frame of hours (valid values are 1-23 hours)
-  Hour(usize),
+  Hour(u32),
   /// A time frame of one day
   OneDay,
   /// A time frame of one week
   OneWeek,
   /// A time frame of months (valid values are 1,2,3,4,6 and 12 months)
-  Month(u64),
+  Month(u32),
 }
 
 impl Serialize for TimeFrame {
