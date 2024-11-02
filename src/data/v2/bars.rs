@@ -15,22 +15,37 @@ use crate::data::DATA_BASE_URL;
 use crate::util::vec_from_str;
 use crate::Str;
 
-
 /// An enumeration of the various supported time frames.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum TimeFrame {
-  /// A time frame of one minute.
-  #[serde(rename = "1Min")]
-  OneMinute,
-  /// A time frame of one hour.
-  #[serde(rename = "1Hour")]
-  OneHour,
-  /// A time frame of one day.
-  #[serde(rename = "1Day")]
+  /// A time frame of minutes (valid values are 1-59 minutes)
+  Minute(usize),
+  /// A time frame of hours (valid values are 1-23 hours)
+  Hour(usize),
+  /// A time frame of one day
   OneDay,
+  /// A time frame of one week
+  OneWeek,
+  /// A time frame of months (valid values are 1,2,3,4,6 and 12 months)
+  Month(u64),
 }
 
+impl Serialize for TimeFrame {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    let to_serialize = match self {
+      TimeFrame::Minute(minutes) => format!("{minutes}Min"),
+      TimeFrame::Hour(hours) => format!("{hours}Hour"),
+      TimeFrame::OneDay => "1Day".to_string(),
+      TimeFrame::OneWeek => "1Week".to_string(),
+      TimeFrame::Month(months) => format!("{months}Month"),
+    };
+    serializer.serialize_str(&to_serialize)
+  }
+}
 
 /// An enumeration of the possible adjustments.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -49,7 +64,6 @@ pub enum Adjustment {
   #[serde(rename = "all")]
   All,
 }
-
 
 /// A GET request to be issued to the /v2/stocks/{symbol}/bars endpoint.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -89,7 +103,6 @@ pub struct ListReq {
   #[serde(skip)]
   pub _non_exhaustive: (),
 }
-
 
 /// A helper for initializing [`ListReq`] objects.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -134,7 +147,6 @@ impl ListReqInit {
   }
 }
 
-
 /// A market data bar as returned by the /v2/stocks/{symbol}/bars endpoint.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct Bar {
@@ -165,7 +177,6 @@ pub struct Bar {
   pub _non_exhaustive: (),
 }
 
-
 /// A collection of bars as returned by the API. This is one page of
 /// bars.
 #[derive(Debug, Deserialize, Eq, PartialEq)]
@@ -185,7 +196,6 @@ pub struct Bars {
   #[serde(skip)]
   pub _non_exhaustive: (),
 }
-
 
 Endpoint! {
   /// The representation of a GET request to the /v2/stocks/{symbol}/bars endpoint.
@@ -212,7 +222,6 @@ Endpoint! {
   }
 }
 
-
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -230,7 +239,6 @@ mod tests {
   use crate::Client;
   use crate::RequestError;
 
-
   #[track_caller]
   fn assert_in(value: &Num, range: RangeInclusive<u64>) {
     assert!(
@@ -238,7 +246,6 @@ mod tests {
       "{value} {range:?}"
     )
   }
-
 
   /// Verify that we can properly parse a reference bar response.
   #[test]
@@ -469,7 +476,7 @@ mod tests {
       page_token: Some("123456789abcdefghi".to_string()),
       ..Default::default()
     }
-    .init("SPY", start, end, TimeFrame::OneMinute);
+    .init("SPY", start, end, TimeFrame::Minute(1));
 
     let err = client.issue::<List>(&request).await.unwrap_err();
     match err {
